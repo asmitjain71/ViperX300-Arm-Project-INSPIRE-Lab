@@ -1,0 +1,5 @@
+# NEVER commit your Firebase service account key - it is a password to your project.
+serviceAccountKey.json
+*.json
+__pycache__/
+*.pyc

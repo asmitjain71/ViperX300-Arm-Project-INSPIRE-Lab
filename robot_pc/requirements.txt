@@ -1,0 +1,10 @@
+# Firebase Admin SDK - lets this PC read/write Firestore securely.
+# This is the ONLY new dependency needed for the listener itself.
+firebase-admin>=6.5.0
+
+# NOTE:
+# The robot control libraries (interbotix_xs_modules, pyrealsense2, ultralytics,
+# opencv-python, numpy) are already installed on the robot PC for the existing
+# scripts in "Sem1 2024-25 - VLN Based Medicine Management System".
+# You do NOT need to reinstall them here. If you want to test the listener on a
+# machine WITHOUT the arm, set FORCE_MOCK_MODE = True in firebase_listener.py.
