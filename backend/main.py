@@ -99,14 +99,13 @@ def pickup_medicine(request: PickupRequest):
             
             with change_dir(scripts_path):
                 python = "python3" if os.name != "nt" else sys.executable
-                for script in ("recorder.py", "Speech_pipe.py", "ans.py"):
-                    result = subprocess.run(
-                        [python, script], cwd=scripts_path, check=True
+                result = subprocess.run(
+                    [python, "test.py"], cwd=scripts_path, check=True
+                )
+                if result.returncode != 0:
+                    raise RuntimeError(
+                        f"test.py exited with code {result.returncode}"
                     )
-                    if result.returncode != 0:
-                        raise RuntimeError(
-                            f"{script} exited with code {result.returncode}"
-                        )
             
             return {"status": "success", "message": f"Picked up {request.item_name}"}
         except Exception as e:
