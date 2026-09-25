@@ -14,8 +14,9 @@ open connection to Firestore, and reacts the instant a new command appears:
     3. THIS script sees the new document in real time.
     4. It "claims" the document (status -> "in_progress") so no other machine
        runs the same command twice.
-    5. It calls the exact same robot functions the HTTP backend used
-       (pick_up / shelf_meds / check_shelf).
+    5. Pickup runs recorder_script.sh (one cycle: recorder.py →
+       Speech_pipe.py → ans.py). Shelve / check_shelf still call
+       shelf_meds / check_shelf.
     6. It writes the outcome back to the same document
        (status -> "success" or "failed", plus finishedAt / errorMessage).
     7. The app, which is listening to that document, updates the UI instantly.
@@ -36,6 +37,7 @@ import contextlib
 import logging
 import os
 import queue
+import subprocess
 import sys
 import threading
 import time
@@ -96,7 +98,6 @@ else:
     try:
         from check_shelf import check_shelf
         from shelve_meds import shelf_meds
-        from robot_func2 import pick_up, get_position
 
         MOCK_MODE = False
     except ImportError as exc:
@@ -114,6 +115,30 @@ def change_dir(path):
         yield
     finally:
         os.chdir(old_dir)
+
+
+def run_recorder_script():
+    """
+    Run one cycle of recorder_script.sh (the pickup pipeline).
+
+    The .sh file itself is an infinite loop:
+        python3 recorder.py
+        python3 Speech_pipe.py
+        python3 ans.py
+    For a single app "Pick Up" tap we run those three steps once so the
+    command can finish and the app can move to Completed.
+    """
+    python = "python3" if os.name != "nt" else sys.executable
+    steps = ("recorder.py", "Speech_pipe.py", "ans.py")
+    for script in steps:
+        logger.info("Pickup pipeline: running %s", script)
+        completed = subprocess.run(
+            [python, script],
+            cwd=SCRIPTS_PATH,
+            check=True,
+        )
+        if completed.returncode != 0:
+            raise RuntimeError(f"{script} exited with code {completed.returncode}")
 
 
 # ---------------------------------------------------------------------------
@@ -141,8 +166,9 @@ def execute_command(data):
     # ---- Real mode: call the same functions the HTTP backend used ----
     with change_dir(SCRIPTS_PATH):
         if command == "pickup":
-            position_code = get_position(item)
-            pick_up(position_code)
+            # App Pick Up now starts the VLN recorder pipeline instead of
+            # robot_func2.pick_up / get_position.
+            run_recorder_script()
             return {}
 
         if command == "shelve":

@@ -6,6 +6,7 @@ import os
 import threading
 import logging
 import contextlib
+import subprocess
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -20,7 +21,6 @@ sys.path.append(scripts_path)
 try:
     from check_shelf import check_shelf
     from shelve_meds import shelf_meds
-    from robot_func2 import pick_up, get_position
     MOCK_MODE = False
 except ImportError as e:
     logger.error(f"Failed to import robot modules: {e}")
@@ -98,8 +98,15 @@ def pickup_medicine(request: PickupRequest):
                 return {"status": "success", "message": f"Picked up {request.item_name} (Mock)"}
             
             with change_dir(scripts_path):
-                position_code = get_position(request.item_name)
-                pick_up(position_code)
+                python = "python3" if os.name != "nt" else sys.executable
+                for script in ("recorder.py", "Speech_pipe.py", "ans.py"):
+                    result = subprocess.run(
+                        [python, script], cwd=scripts_path, check=True
+                    )
+                    if result.returncode != 0:
+                        raise RuntimeError(
+                            f"{script} exited with code {result.returncode}"
+                        )
             
             return {"status": "success", "message": f"Picked up {request.item_name}"}
         except Exception as e:
